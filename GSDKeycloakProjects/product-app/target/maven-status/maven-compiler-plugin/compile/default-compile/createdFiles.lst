@@ -1,0 +1,4 @@
+org\keycloak\example\oauth\Controller.class
+org\keycloak\example\oauth\ProductDatabaseClient$Failure.class
+org\keycloak\example\oauth\ProductDatabaseClient.class
+org\keycloak\example\oauth\ProductDatabaseClient$TypedList.class

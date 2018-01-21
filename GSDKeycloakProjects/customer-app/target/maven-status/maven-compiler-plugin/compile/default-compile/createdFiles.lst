@@ -1,0 +1,7 @@
+org\keycloak\example\Controller.class
+org\keycloak\example\CustomerDatabaseClient.class
+org\keycloak\example\CustomerDatabaseClient$TypedList.class
+org\keycloak\example\CustomerDatabaseClient$Failure.class
+org\keycloak\example\AdminClient$TypedList.class
+org\keycloak\example\AdminClient.class
+org\keycloak\example\AdminClient$Failure.class
