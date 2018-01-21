@@ -1,0 +1,10 @@
+{
+  "realm": "demo",
+  "auth-server-url": "http://localhost:8180/auth",
+  "ssl-required": "external",
+  "resource": "rest_service",
+  "credentials": {
+    "secret": "cb5e1be8-486d-480e-9d11-b202d7bf586b"
+  },
+  "policy-enforcer": {}
+}

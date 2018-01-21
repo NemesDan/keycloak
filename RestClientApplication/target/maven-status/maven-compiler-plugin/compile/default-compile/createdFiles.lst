@@ -1,0 +1,3 @@
+service\MyApplication.class
+service\json\Token.class
+service\RestService.class
