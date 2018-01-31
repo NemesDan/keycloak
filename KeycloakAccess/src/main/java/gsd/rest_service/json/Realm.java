@@ -1,5 +1,7 @@
 package gsd.rest_service.json;
 
+import java.math.BigDecimal;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -9,31 +11,42 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonInclude(Include.NON_NULL)
 public class Realm {
 
-    @JsonProperty("id")
-    private String id;
+	@JsonProperty("id")
+	private String id;
 
-    @JsonProperty("realm")
-    private String realm;
+	@JsonProperty("realm")
+	private String realm;
 
-    public String getId() {
-	return id;
-    }
+	@JsonProperty("notBefore")
+	private BigDecimal notBefore;
 
-    public void setId(String id) {
-	this.id = id;
-    }
+	public String getId() {
+		return id;
+	}
 
-    public String getRealm() {
-	return realm;
-    }
+	public void setId(String id) {
+		this.id = id;
+	}
 
-    public void setRealm(String realm) {
-	this.realm = realm;
-    }
+	public String getRealm() {
+		return realm;
+	}
 
-    @Override
-    public String toString() {
-	return "Realm [id=" + id + ", realm=" + realm + "]";
-    }
+	public void setRealm(String realm) {
+		this.realm = realm;
+	}
+
+	public BigDecimal getNotBefore() {
+		return notBefore;
+	}
+
+	public void setNotBefore(BigDecimal notBefore) {
+		this.notBefore = notBefore;
+	}
+
+	@Override
+	public String toString() {
+		return "Realm [id=" + id + ", realm=" + realm + "]";
+	}
 
 }
