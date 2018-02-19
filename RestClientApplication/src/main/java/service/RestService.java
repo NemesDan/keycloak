@@ -30,14 +30,16 @@ import org.apache.http.message.BasicNameValuePair;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import service.json.Client;
+import service.json.PushRevocation;
 import service.json.Realm;
 import service.json.Token;
 
 @Path("/service")
 public class RestService {
-
-	private static Token accessToken = null;
-	private static Token adminAccessToken = null;
+	
+//	private static Set<Token> accessTokenSet = new HashSet<Token>();
+	private static List<Token> accessTokenList = new ArrayList<Token>();
 	private static final String REST_SERVICE_SECRET = "cb5e1be8-486d-480e-9d11-b202d7bf586b";
 	
 	@GET
@@ -138,31 +140,53 @@ public class RestService {
 
 		try {
 			ObjectMapper mapper = new ObjectMapper();
-			accessToken = mapper.readValue(result.toString(), Token.class);
+			Token accessToken = mapper.readValue(result.toString(), Token.class);
+			if(accessToken != null)
+			{
+				accessTokenList.add(accessToken);
+			}
+			else
+			{
+				System.out.println("----------------");
+				System.out.println("");
+				System.out.println("");
+				System.out.println("");
+				System.out.println("");
+				System.out.println("");
+				System.out.println("ACCESS TOKEN IS NULL!!!!!!!!!!!!");
+				System.out.println("");
+				System.out.println("");
+				System.out.println("");
+				System.out.println("");
+				System.out.println("");
+				System.out.println("----------------");
+			}
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
 	}
 
 	@GET
-	@Path("/call_database/{param}")
+	@Path("/call_database/{param}/{id}")
 	public Response printMessage(@QueryParam("code") String code, 
 			@QueryParam("state") String state,
 			@QueryParam("client_id") String clientId,
-			@PathParam("param") String param) throws Exception {
+			@PathParam("param") String param,
+			@PathParam("id") int id) throws Exception {
 
-		String output = this.accessDatabaseRestService(param);
+		String output = this.accessDatabaseRestService(param, id);
 
 		return Response.status(200).entity(output).build();
 	}
 
-	private String accessDatabaseRestService(String command) throws Exception {
+	private String accessDatabaseRestService(String command, int id) throws Exception {
 		System.out.println("trying to access database rest service");
 		String uri = "http://localhost:8080/database/" + command;
 
 		HttpClient client = HttpClientBuilder.create().build();
 		HttpGet request = new HttpGet(uri);
-		if (accessToken != null) {
+		Token accessToken = accessTokenList.get(id);
+		if (!accessTokenList.isEmpty()) {
 			request.addHeader("Authorization", "Bearer " + accessToken.getAccessToken());
 		}
 
@@ -181,39 +205,22 @@ public class RestService {
 		return result.toString();
 	}
 
-	// still be accessed with the token
 	@GET
-	@Path("/logout")
-	public Response doLogout() throws Exception {
-		System.out.println("trying to logout the user");
-		String uriString = "http://localhost:8180/auth/realms/demo/protocol/openid-connect/logout";
-
-		URI uri = new URIBuilder(uriString)
-				.addParameter("redirect_uri", "http://localhost:8080/TestRestProject/rest/service")
-				.addParameter("client_id", "rest_service").build();
-
-		return Response.temporaryRedirect(uri).build();
-	}
-
-	@GET
-	@Path("/logout_2")
-	public Response doLogout2() throws Exception {
+	@Path("/logout/{id}")
+	public Response doLogout(@PathParam("id") int id) throws Exception {
 		System.out.println("trying to logout the user");
 		String uri = "http://localhost:8180/auth/realms/demo/protocol/openid-connect/logout";
+		
+		Token accessTokenToInvalidate = accessTokenList.get(id);
 
 		HttpClient client = HttpClientBuilder.create().build();
 		HttpPost request = new HttpPost(uri);
 		request.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-www-form-urlencoded");
-
-		if (accessToken != null) {
-			request.addHeader("Authorization", "Bearer " + accessToken.getAccessToken());
-		}
+		request.addHeader("Authorization", "Bearer " + accessTokenToInvalidate.getAccessToken());
 
 		List<BasicNameValuePair> urlParameters = new ArrayList<BasicNameValuePair>();
 		urlParameters.add(new BasicNameValuePair("client_id", "rest_service"));
-		if (accessToken != null) {
-			urlParameters.add(new BasicNameValuePair("refresh_token", accessToken.getRefreshToken()));
-		}
+		urlParameters.add(new BasicNameValuePair("refresh_token", accessTokenToInvalidate.getRefreshToken()));
 		urlParameters.add(new BasicNameValuePair("client_secret", REST_SERVICE_SECRET));
 		urlParameters.add(new BasicNameValuePair("redirect_uri", "http://localhost:8080/TestRestProject/"));
 
@@ -240,16 +247,21 @@ public class RestService {
 		//
 		//
 		//
-		keycloakAuthenticate();
+//		final Token adminAccessToken = keycloakAuthenticate();
+//		putRealmNotBefore(adminAccessToken);
+//		pushRealmRevocation(adminAccessToken);
 		
-		putNotBefore();
+//		String clientID = "75f79ec3-fd29-4994-9b63-e287cb5a57aa";	// rest-service client ID
+		String clientID = "4a0f8ba2-0feb-43ac-b273-f044305597e5";	// database client ID
 		
-		pushRevocation();
+//		putClientNotBefore(clientID, adminAccessToken);
+//		pushClientRevocation(clientID, adminAccessToken);
 		
+//		accessTokenList.remove(accessTokenToInvalidate);
 		return Response.status(204).build();
 	}
 	
-	private static void keycloakAuthenticate() throws Exception {
+	private Token keycloakAuthenticate() throws Exception {
 		System.out.println("trying to authenticate into keycloak to retrieve the admin access token");
 		String uri = "http://localhost:8180/auth/realms/master/protocol/openid-connect/token";
 
@@ -278,20 +290,20 @@ public class RestService {
 
 		try {
 			ObjectMapper mapper = new ObjectMapper();
-			adminAccessToken = mapper.readValue(result.toString(), Token.class);
+			Token adminAccessToken = mapper.readValue(result.toString(), Token.class);
+			return adminAccessToken;
 		} catch (Exception ex) {
 		}
+		return null;
 	}
 	
-	private static void putNotBefore() throws Exception {
+	private void putRealmNotBefore(Token adminAccessToken) throws Exception {
 		System.out.println("trying to put the not before value");
 		String uri = "http://localhost:8180/auth/admin/realms/demo";
 
 		HttpClient client = HttpClientBuilder.create().build();
 		HttpPut putRequest = new HttpPut(uri);
-		if (adminAccessToken != null) {
-			putRequest.addHeader("Authorization", "Bearer " + adminAccessToken.getAccessToken());
-		}
+		putRequest.addHeader("Authorization", "Bearer " + adminAccessToken.getAccessToken());
 		putRequest.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 		
 		// the not before value MUST HAVE a dot on the 3'rd last position (or somewhere there, couldn't find out WHY???????)
@@ -329,16 +341,59 @@ public class RestService {
 			System.out.println();
 		}
 	}
+
+	private void putClientNotBefore(String clientID, Token adminAccessToken) throws Exception {
+		System.out.println("trying to put the not before value");
+		String uri = "http://localhost:8180/auth/admin/realms/demo/clients/" + clientID;
+
+		HttpClient httpClient = HttpClientBuilder.create().build();
+		HttpPut putRequest = new HttpPut(uri);
+		putRequest.addHeader("Authorization", "Bearer " + adminAccessToken.getAccessToken());
+		putRequest.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+		
+		// the not before value MUST HAVE a dot on the 3'rd last position (or somewhere there, couldn't find out WHY???????)
+		long notBefore = System.currentTimeMillis();
+		String notBeforeString = Long.toString(notBefore);
+		notBeforeString = notBeforeString.substring(0, 10) + "." + notBeforeString.substring(10, notBeforeString.length());
+		
+		String clientRepresentation = null;
+		Client client = new Client(clientID);
+		client.setNotBefore(new BigDecimal(notBeforeString));
+		client.setClientId("rest_service");
+		try {
+			ObjectMapper mapper = new ObjectMapper();
+			clientRepresentation = mapper.writeValueAsString(client);
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
+		HttpEntity entity = new ByteArrayEntity(clientRepresentation.getBytes("UTF-8"));
+		putRequest.setEntity(entity);
+		HttpResponse response = httpClient.execute(putRequest);
+
+		int responseCode = response.getStatusLine().getStatusCode();
+		System.out.println("Response Code : " + responseCode);
+
+		// response code 204 means NO_CONTENT
+		if (responseCode != 204) {
+			BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+			StringBuffer result = new StringBuffer();
+			String line1 = "";
+			while ((line1 = rd.readLine()) != null) {
+				result.append(line1);
+			}
+			System.out.println(result);
+			System.out.println();
+		}
+	}
 	
-	private static void pushRevocation() throws Exception {
+	private void pushRealmRevocation(Token adminAccessToken) throws Exception {
 		System.out.println("trying to put the not before value");
 		String uri = "http://localhost:8180/auth/admin/realms/demo/push-revocation";
 
 		HttpClient client = HttpClientBuilder.create().build();
 		HttpPost postRequest = new HttpPost(uri);
-		if (adminAccessToken != null) {
-			postRequest.addHeader("Authorization", "Bearer " + adminAccessToken.getAccessToken());
-		}
+		postRequest.addHeader("Authorization", "Bearer " + adminAccessToken.getAccessToken());
 		// both content type and accept are MANDATORY!!!!!!!!!!!!!!!!!
 		postRequest.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
 		postRequest.setHeader(HttpHeaders.ACCEPT, "application/json");
@@ -370,4 +425,42 @@ public class RestService {
 		System.out.println();
 	}
 
+	private void pushClientRevocation(String clientID, Token adminAccessToken) throws Exception {
+		System.out.println("trying to put the not before value");
+		String realm = "demo";
+		String uri = "http://localhost:8180/auth/admin/realms/" + realm + "/clients/" + clientID + "/push-revocation";
+
+		HttpClient httpClient = HttpClientBuilder.create().build();
+		HttpPost postRequest = new HttpPost(uri);
+		postRequest.addHeader("Authorization", "Bearer " + adminAccessToken.getAccessToken());
+		// both content type and accept are MANDATORY!!!!!!!!!!!!!!!!!
+		postRequest.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+		postRequest.setHeader(HttpHeaders.ACCEPT, "application/json");
+		
+		String pushRevocationRepresentation = null;
+		PushRevocation pushRevocation = new PushRevocation(clientID);
+		pushRevocation.setRealm(realm);
+		
+		try {
+			ObjectMapper mapper = new ObjectMapper();
+			pushRevocationRepresentation = mapper.writeValueAsString(pushRevocation);
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
+		HttpEntity entity = new ByteArrayEntity(pushRevocationRepresentation.getBytes("UTF-8"));
+		postRequest.setEntity(entity);
+		HttpResponse response = httpClient.execute(postRequest);
+
+		System.out.println("Response Code : " + response.getStatusLine().getStatusCode());
+
+		BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+		StringBuffer result = new StringBuffer();
+		String line1 = "";
+		while ((line1 = rd.readLine()) != null) {
+			result.append(line1);
+		}
+		System.out.println(result);
+		System.out.println();
+	}
 }
