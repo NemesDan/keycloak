@@ -23,6 +23,7 @@ import java.util.List;
 
 import javax.annotation.security.RolesAllowed;
 import javax.ejb.Stateless;
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -30,7 +31,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 
 import org.jboss.resteasy.annotations.cache.NoCache;
-import org.jboss.resteasy.spi.HttpRequest;
 import org.keycloak.KeycloakPrincipal;
 
 @Path("customers")
@@ -38,13 +38,13 @@ import org.keycloak.KeycloakPrincipal;
 public class CustomerService {
 
 	@Context
-	private HttpRequest httpRequest;
+	private HttpServletRequest httpRequest;
 
 	@GET
 	@Produces("application/json")
 	@NoCache
 	@RolesAllowed({ "admin" })
-	public List<String> getCustomers(@Context HttpServletRequest request) {
+	public List<String> getCustomers(@Context HttpServletRequest request) throws ServletException {
 		Principal principal = request.getUserPrincipal();
 		String clientName = null;
 		if (principal instanceof KeycloakPrincipal) {
@@ -52,7 +52,13 @@ public class CustomerService {
 			System.out.println(keycloakPrincipal.getKeycloakSecurityContext().getToken().getIssuedFor());
 			clientName = keycloakPrincipal.getKeycloakSecurityContext().getToken().getIssuedFor();
 		}
-
+		
+		request.logout();
+		request.getSession().invalidate();
+		
+		httpRequest.logout();
+		httpRequest.getSession().invalidate();
+		
 		ArrayList<String> rtn = new ArrayList<String>();
 		rtn.add("Bill Burke");
 		rtn.add("Stian Thorgersen");
